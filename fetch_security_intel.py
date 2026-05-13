@@ -116,6 +116,15 @@ def split_csv(line: str) -> list[str]:
     return [s.strip() for s in line.split(",") if s.strip()]
 
 
+def read_terms_file(path: str) -> list[str]:
+    """One term per line, comma-separated, or any mix. Blank lines skipped."""
+    terms: list[str] = []
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            terms.extend(split_csv(line))
+    return terms
+
+
 # ---- Fetchers --------------------------------------------------------------
 
 
@@ -258,6 +267,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Add a keyword to the filter (repeatable). Adds to defaults.",
     )
     p.add_argument(
+        "--keywords-file", metavar="PATH",
+        help=(
+            "Read additional keywords from a file. One per line, or "
+            "comma-separated, or a mix. Blank lines and '#' comments ignored."
+        ),
+    )
+    p.add_argument(
+        "--hashtags-file", metavar="PATH",
+        help="Same format as --keywords-file, but for Twitter hashtags.",
+    )
+    p.add_argument(
         "-H", "--hashtag", action="append", default=[], metavar="TAG",
         help="Add a Twitter hashtag (repeatable). '#' is optional.",
     )
@@ -297,8 +317,15 @@ def main(argv: list[str] | None = None) -> int:
     interactive = sys.stdin.isatty() and not args.no_prompt
 
     keywords = list(DEFAULT_KEYWORDS) + list(args.keyword)
-    hashtags = normalize_hashtags(list(DEFAULT_HASHTAGS) + list(args.hashtag))
+    hashtags_raw = list(DEFAULT_HASHTAGS) + list(args.hashtag)
     subreddits = list(DEFAULT_SUBREDDITS) + list(args.subreddit)
+
+    if args.keywords_file:
+        keywords.extend(read_terms_file(args.keywords_file))
+    if args.hashtags_file:
+        hashtags_raw.extend(read_terms_file(args.hashtags_file))
+
+    hashtags = normalize_hashtags(hashtags_raw)
 
     if interactive:
         sys.stderr.write(

@@ -82,9 +82,30 @@ python3 fetch_security_intel.py \
 | `-k, --keyword` | Add a keyword (repeatable) |
 | `-H, --hashtag` | Add an X hashtag, `#` optional (repeatable) |
 | `-s, --subreddit` | Add a subreddit, bare name (repeatable) |
+| `--keywords-file PATH` | Read additional keywords from a file (one per line, or comma-separated, or mixed) |
+| `--hashtags-file PATH` | Same, for Twitter hashtags |
 | `--min-upvotes N` | Reddit score threshold |
 | `--hours N` | Look-back window |
 | `--no-prompt` | Skip interactive prompts (use for cron/CI) |
+
+### Demo: paste keywords from another source
+
+The interactive prompt only reads one line, so pasting a multi-line list
+won't work there. Use a file instead:
+
+```bash
+# Paste your clipboard into a file (macOS):
+pbpaste > /tmp/keywords.txt
+
+# Run with that file as the keyword source:
+python3 fetch_security_intel.py --keywords-file /tmp/keywords.txt --no-prompt > intel.json
+
+# View results
+jq '.count, .items[0:5]' intel.json
+```
+
+The file can be one term per line, comma-separated, or any mix — blank
+lines are ignored.
 
 CLI and interactive additions both *extend* the defaults — they don't
 replace them. To change defaults permanently, edit the constants at the

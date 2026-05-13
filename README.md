@@ -43,6 +43,53 @@ tokens → Bearer Token.
 
 See `.env.example` for the expected variable name.
 
+## Customizing a single run
+
+Two ways to add keywords/hashtags/subreddits without editing the file:
+
+**Interactive (the default when running in a terminal).** The script shows
+the current filter and lets you add comma-separated extras for that run:
+
+```text
+$ python3 fetch_security_intel.py > intel.json
+Interactive mode — extend the defaults below, or press Enter to keep them.
+
+Current keywords:
+  AI security, LLM exploit, smart contract, vulnerability, CVE, supply chain
+Add more keywords (comma-separated), or press Enter to skip: RCE, zero-day
+
+Current hashtags (# optional):
+  #aisecurity, #llmsecurity, #web3security, #smartcontractaudit, #CVE
+Add more hashtags (comma-separated), or press Enter to skip:
+
+Fetching...
+```
+
+**CLI flags (good for scripts / cron).** All repeatable:
+
+```bash
+python3 fetch_security_intel.py \
+  -k "RCE" -k "zero-day" \
+  -H "#0day" -H supplychainattack \
+  -s blueteamsec \
+  --min-upvotes 100 \
+  --hours 48 \
+  --no-prompt > intel.json
+```
+
+| Flag | Purpose |
+| --- | --- |
+| `-k, --keyword` | Add a keyword (repeatable) |
+| `-H, --hashtag` | Add an X hashtag, `#` optional (repeatable) |
+| `-s, --subreddit` | Add a subreddit, bare name (repeatable) |
+| `--min-upvotes N` | Reddit score threshold |
+| `--hours N` | Look-back window |
+| `--no-prompt` | Skip interactive prompts (use for cron/CI) |
+
+CLI and interactive additions both *extend* the defaults — they don't
+replace them. To change defaults permanently, edit the constants at the
+top of `fetch_security_intel.py` and commit.
+
 ## Output
 
 A single JSON object written to stdout:

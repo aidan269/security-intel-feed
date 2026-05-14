@@ -96,16 +96,53 @@ won't work there. Use a file instead:
 ```bash
 # Paste your clipboard into a file (macOS):
 pbpaste > /tmp/keywords.txt
+cat /tmp/keywords.txt   # always verify what landed in the file
 
-# Run with that file as the keyword source:
-python3 fetch_security_intel.py --keywords-file /tmp/keywords.txt --no-prompt > intel.json
+# Run with that file as the keyword source and save the run:
+python3 fetch_security_intel.py \
+  --keywords-file /tmp/keywords.txt \
+  --output-dir runs \
+  --no-prompt
 
-# View results
-jq '.count, .items[0:5]' intel.json
+# View the most recent run:
+jq '.count, .items[0:5]' runs/latest.json
 ```
 
-The file can be one term per line, comma-separated, or any mix — blank
-lines are ignored.
+The keywords file can be one term per line, comma-separated, or any mix —
+blank lines are ignored.
+
+## Saving runs and comparing history
+
+By default the script prints to stdout, which is fine for piping into
+other tools but means every `> intel.json` redirect overwrites the
+previous run. Use `--output-dir` to keep a history instead:
+
+```bash
+python3 fetch_security_intel.py --output-dir runs --no-prompt
+# → Wrote runs/intel-2026-05-13T02-46-04Z.json (3 items).
+# → Symlinked as runs/latest.json.
+```
+
+Each run lands in its own timestamped file (UTC). The
+`runs/latest.json` symlink always points at the most recent one, so
+dashboards or follow-up commands can target a stable path.
+
+**List runs with their keyword sets and counts:**
+
+```bash
+jq -r '[.generated_at, .count, (.keywords | join(","))] | @tsv' runs/intel-*.json \
+  | column -t -s $'\t'
+```
+
+**Diff two runs to see what changed:**
+
+```bash
+diff <(jq -r '.items[].url' runs/intel-A.json | sort) \
+     <(jq -r '.items[].url' runs/intel-B.json | sort)
+```
+
+The `runs/` folder is gitignored except for `.gitkeep`, so historical
+outputs stay on your machine and don't bloat the repo.
 
 CLI and interactive additions both *extend* the defaults — they don't
 replace them. To change defaults permanently, edit the constants at the

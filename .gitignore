@@ -5,7 +5,10 @@
 
 # Generated output
 intel.json
+runs/*
+!runs/.gitkeep
 *.log
+*.stderr
 
 # Python
 __pycache__/

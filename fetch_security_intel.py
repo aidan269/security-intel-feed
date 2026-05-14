@@ -297,6 +297,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--no-prompt", action="store_true",
         help="Don't prompt interactively, even when stdin is a terminal.",
     )
+    p.add_argument(
+        "-o", "--output", metavar="PATH",
+        help="Write JSON to PATH instead of stdout.",
+    )
+    p.add_argument(
+        "--output-dir", metavar="DIR",
+        help=(
+            "Write JSON to DIR/intel-<UTC timestamp>.json. Also updates "
+            "DIR/latest.json to point at the new file. Creates DIR if needed."
+        ),
+    )
     return p.parse_args(argv)
 
 
@@ -361,9 +372,42 @@ def main(argv: list[str] | None = None) -> int:
         "count": len(results),
         "items": [asdict(i) for i in results],
     }
-    json.dump(output, sys.stdout, indent=2, ensure_ascii=False)
-    sys.stdout.write("\n")
+    write_output(output, args)
     return 0
+
+
+def write_output(payload: dict, args: argparse.Namespace) -> None:
+    if args.output_dir:
+        os.makedirs(args.output_dir, exist_ok=True)
+        stamp = datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
+        out_path = os.path.join(args.output_dir, f"intel-{stamp}.json")
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(payload, f, indent=2, ensure_ascii=False)
+            f.write("\n")
+        # Update DIR/latest.json as a relative symlink. Replace any existing one.
+        latest = os.path.join(args.output_dir, "latest.json")
+        try:
+            if os.path.islink(latest) or os.path.exists(latest):
+                os.remove(latest)
+            os.symlink(os.path.basename(out_path), latest)
+        except OSError as e:
+            print(f"[warn] couldn't update latest.json: {e}", file=sys.stderr)
+        print(
+            f"Wrote {out_path} ({payload['count']} item(s)). "
+            f"Symlinked as {latest}.",
+            file=sys.stderr,
+        )
+        return
+
+    if args.output:
+        with open(args.output, "w", encoding="utf-8") as f:
+            json.dump(payload, f, indent=2, ensure_ascii=False)
+            f.write("\n")
+        print(f"Wrote {args.output} ({payload['count']} item(s)).", file=sys.stderr)
+        return
+
+    json.dump(payload, sys.stdout, indent=2, ensure_ascii=False)
+    sys.stdout.write("\n")
 
 
 if __name__ == "__main__":
